@@ -83,10 +83,10 @@ jobs:
       with:
         node-version: 18
 
-    - name: Install dependencies
+    - name: Install frontend dependencies
       run: |
         cd frontend/
-        npm ci
+        npm install --legacy-peer-deps
 
     - name: Test frontend
       run: |
