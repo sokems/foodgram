@@ -1,0 +1,45 @@
+volumes:
+  pg:
+  static:
+  media:
+  data:
+
+services:
+  db:
+    image: postgres:14.0-alpine
+    volumes:
+      - pg:/var/lib/postgresql/data/
+    env_file:
+      - ./.env
+
+  backend:
+    build: ./backend/
+    restart: always
+    volumes:
+      - data:/app/data/
+      - static:/app/static/
+      - media:/app/media/
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+
+  frontend:
+    build: ./frontend/
+    volumes:
+      - ../frontend/:/app/result_build/
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:1.19.3
+    ports:
+      - 9000:80
+    volumes:
+      - ../frontend/build:/usr/share/nginx/html/
+      - ../docs/redoc.html:/usr/share/nginx/html/api/docs/redoc.html
+      - ../docs/openapi-schema.yml:/usr/share/nginx/html/api/docs/openapi-schema.yml
+      - static:/var/html/static/
+      - media:/var/html/media/
+    depends_on:
+      - frontend
