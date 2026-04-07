@@ -155,7 +155,7 @@ jobs:
           🚀 Деплой foodgram успешно выполнен!
 
           👤 Автор: ${{ github.actor }}
-          💬 Коммит: ${{ github.event.commits[0].message }}
+          💬 Коммит: ${{ github.event.commits[0] }}
 
           🔗 Ссылка на коммит:
           https://github.com/${{ github.repository }}/commit/${{ github.sha }}
