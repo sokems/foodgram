@@ -70,7 +70,7 @@ class Subscription(models.Model):
                 name='unique_subscription',
             ),
             models.CheckConstraint(
-                check=~models.Q(user=models.F('author')),
+                condition=~models.Q(user=models.F('author')),
                 name='prevent_self_subscription',
             ),
         ]
