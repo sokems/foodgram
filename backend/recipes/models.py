@@ -1,268 +1,250 @@
+import shortuuid
 from django.contrib.auth import get_user_model
-from django.core.validators import (MinValueValidator, RegexValidator, )
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Exists, Manager, OuterRef
+
+from django.conf import settings
 
 User = get_user_model()
 
 
+class RecipeManager(Manager):
+    """Менеджер для модели рецептов."""
+
+    def with_user_annotations(self, user):
+        if not user.is_authenticated:
+            return self.get_queryset().annotate(
+                is_favorited=Exists(Favorite.objects.none()),
+                is_in_shopping_cart=Exists(ShoppingCart.objects.none()),
+            )
+
+        favorite_subquery = Favorite.objects.filter(
+            user=user,
+            recipe=OuterRef('pk'),
+        )
+        cart_subquery = ShoppingCart.objects.filter(
+            user=user,
+            recipe=OuterRef('pk'),
+        )
+        return self.get_queryset().annotate(
+            is_favorited=Exists(favorite_subquery),
+            is_in_shopping_cart=Exists(cart_subquery),
+        )
+
+
 class Tag(models.Model):
-    """Модель для описания тега"""
+    """Модель тега."""
 
     name = models.CharField(
-        max_length=50,
+        max_length=settings.TAG_NAME_MAX_LENGTH,
         unique=True,
-        verbose_name='Название тэга')
-    color = models.CharField(
-        'Цвет',
-        max_length=7,
-        unique=True,
-        validators=[
-            RegexValidator(
-                regex='^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$',
-                message='Введенное значение не является цветом в формате HEX!'
-            )
-        ],
-        default='#006400',
-        help_text='Введите цвет тега. Например, #006400',
+        verbose_name='Название тега',
     )
     slug = models.SlugField(
-        max_length=100,
+        max_length=settings.TAG_NAME_MAX_LENGTH,
         unique=True,
-        verbose_name='Уникальный слаг')
+        verbose_name='Слаг',
+    )
 
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
-        constraints = (
-            models.UniqueConstraint(
-                fields=('name', 'color', 'slug'),
-                name='unique_tags',
-            ),
-        )
+        ordering = ['name']
 
     def __str__(self):
         return self.name
 
 
 class Ingredient(models.Model):
-    """Модель для описания ингредиента"""
+    """Модель ингредиента."""
 
     name = models.CharField(
-        max_length=200,
-        db_index=True,
-        verbose_name='Название ингредиента')
-
+        max_length=settings.INGREDIENT_NAME_MAX_LENGTH,
+        verbose_name='Название ингредиента',
+    )
     measurement_unit = models.CharField(
-        max_length=200,
-        verbose_name='Единицы измерения')
+        max_length=settings.INGREDIENT_MEASURE_MAX_LENGTH,
+        verbose_name='Единица измерения',
+    )
 
     class Meta:
-        ordering = ('name',)
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['name', 'measurement_unit'],
+                name='unique_ingredient',
+            ),
+        ]
 
     def __str__(self):
-        return f'{self.name}, {self.measurement_unit}'
+        return f'{self.name} ({self.measurement_unit})'
 
 
 class Recipe(models.Model):
-    """Модель для описания рецепта"""
+    """Модель рецепта."""
+
+    objects = RecipeManager()
 
     author = models.ForeignKey(
         User,
-        related_name='recipes',
         on_delete=models.CASCADE,
-        verbose_name='Автор рецепта',
+        related_name='recipes',
+        verbose_name='Автор',
     )
     name = models.CharField(
-        max_length=200,
-        verbose_name='Название рецепта'
+        max_length=settings.RECIPE_NAME_MAX_LENGTH,
+        verbose_name='Название рецепта',
     )
+    text = models.TextField(verbose_name='Описание рецепта')
     image = models.ImageField(
-        verbose_name='Фотография рецепта',
-        upload_to='recipes/',
-        blank=True
+        upload_to='recipes/images/',
+        verbose_name='Картинка',
     )
-    text = models.TextField(
-        verbose_name='Описание рецепта'
-    )
-    ingredients = models.ManyToManyField(
-        Ingredient,
-        through='IngredientInRecipe',
-        related_name='recipes',
-        verbose_name='Ингредиенты'
+    cooking_time = models.PositiveSmallIntegerField(
+        verbose_name='Время приготовления (мин)',
+        validators=[
+            MinValueValidator(
+                settings.COOKING_TIME_MIN,
+                message=(
+                    f'Время приготовления не может быть меньше '
+                    f'{settings.COOKING_TIME_MIN} минут.'
+                ),
+            ),
+            MaxValueValidator(
+                settings.COOKING_TIME_MAX,
+                message=(
+                    f'Время приготовления не может быть больше '
+                    f'{settings.COOKING_TIME_MAX} минут.'
+                ),
+            ),
+        ],
     )
     tags = models.ManyToManyField(
         Tag,
         related_name='recipes',
-        verbose_name='Теги'
+        verbose_name='Теги',
     )
-    cooking_time = models.PositiveSmallIntegerField(
-        'Время приготовления',
-        validators=[
-            MinValueValidator(1, message='Минимальное значение 1!'),
-        ]
+    recipe_ingredients = models.ManyToManyField(
+        Ingredient,
+        through='RecipeIngredient',
+        related_name='used_in_recipes',
+        verbose_name='Ингредиенты',
     )
-    created = models.DateTimeField(
+    short_code = models.CharField(
+        max_length=settings.UUID_MAX_LENGTH,
+        unique=True,
+        default=shortuuid.uuid,
+        verbose_name='Короткий код',
+    )
+    pub_date = models.DateTimeField(
         auto_now_add=True,
-        db_index=True,
-        verbose_name='Дата публикации рецепта'
+        verbose_name='Дата публикации',
     )
 
     class Meta:
+        ordering = ['-pub_date']
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
-        ordering = ('-created',)
 
     def __str__(self):
         return self.name
 
 
-class IngredientInRecipe(models.Model):
-    """Модель для описания количества ингредиентов в отдельных рецептах"""
+class RecipeIngredient(models.Model):
+    """Модель ингредиента в рецепте."""
 
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='ingredient_list',
+        related_name='ingredients',
         verbose_name='Рецепт',
     )
     ingredient = models.ForeignKey(
         Ingredient,
         on_delete=models.CASCADE,
+        related_name='recipe_ingredients',
         verbose_name='Ингредиент',
-        related_name='in_recipe'
     )
     amount = models.PositiveSmallIntegerField(
         verbose_name='Количество',
         validators=[
-            MinValueValidator(1, message='Минимальное количество 1!'),
-        ]
+            MinValueValidator(
+                settings.INGREDIENT_MIN_AMOUNT,
+                message=(
+                    f'Количество ингредиента не может быть меньше '
+                    f'{settings.INGREDIENT_MIN_AMOUNT}.'
+                ),
+            ),
+            MaxValueValidator(
+                settings.INGREDIENT_MAX_AMOUNT,
+                message=(
+                    f'Количество ингредиента не может быть больше '
+                    f'{settings.INGREDIENT_MAX_AMOUNT}.'
+                ),
+            ),
+        ],
     )
 
     class Meta:
         verbose_name = 'Ингредиент в рецепте'
-        verbose_name_plural = 'Ингредиенты в рецептах'
+        verbose_name_plural = 'Ингредиенты в рецепте'
         constraints = [
             models.UniqueConstraint(
-                fields=('recipe', 'ingredient'),
-                name='unique_ingredients_in_the_recipe'
-            )
+                fields=['recipe', 'ingredient'],
+                name='unique_recipe_ingredient',
+            ),
         ]
 
     def __str__(self):
-        return f'{self.ingredient} {self.recipe}'
+        return f'{self.ingredient} в {self.recipe}'
 
 
-class TagInRecipe(models.Model):
-    """Создание модели тегов рецепта."""
+class UserRecipeRelation(models.Model):
+    """Абстрактная базовая модель для связи пользователя и рецепта."""
 
-    tag = models.ForeignKey(
-        Tag,
+    user = models.ForeignKey(
+        User,
         on_delete=models.CASCADE,
-        verbose_name='Теги',
-        help_text='Выберите теги рецепта'
+        related_name='%(class)s_set',
+        verbose_name='Пользователь',
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
+        related_name='%(class)s_set',
         verbose_name='Рецепт',
-        help_text='Выберите рецепт')
-
-    class Meta:
-        verbose_name = 'Тег рецепта'
-        verbose_name_plural = 'Теги рецепта'
-        constraints = [
-            models.UniqueConstraint(fields=['tag', 'recipe'],
-                                    name='unique_tagrecipe')
-        ]
-
-    def __str__(self):
-        return f'{self.tag} {self.recipe}'
-
-
-class ShoppingCart(models.Model):
-    """Модель для описания формирования покупок """
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='shopping_user',
-        verbose_name='Пользователь'
-    )
-    recipe = models.ForeignKey(
-        Recipe,
-        on_delete=models.CASCADE,
-        related_name='shopping_recipe',
-        verbose_name='Рецепт'
     )
 
     class Meta:
-        verbose_name = 'Список покупок'
-        verbose_name_plural = 'Списки покупок'
+        abstract = True
         constraints = [
             models.UniqueConstraint(
-                fields=['user', 'recipe'], name='unique_shoppingcart'
+                fields=['user', 'recipe'],
+                name='unique_%(class)s',
             )
         ]
 
-    def __str__(self):
-        return f'{self.user} {self.recipe}'
 
+class Favorite(UserRecipeRelation):
+    """Модель избранного рецепта."""
 
-class Follow(models.Model):
-    """ Модель для создания подписок на автора"""
-
-    author = models.ForeignKey(
-        User,
-        related_name='follow',
-        on_delete=models.CASCADE,
-        verbose_name='Автор рецепта',
-    )
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='follower',
-        verbose_name='Подписчик'
-    )
-
-    class Meta:
-        verbose_name = 'Подписка'
-        verbose_name_plural = 'Подписки'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'author'], name='unique_follow'
-            )
-        ]
-
-    def __str__(self):
-        return f'{self.user} {self.author}'
-
-
-class Favorite(models.Model):
-    """Модель для создания избранного."""
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='favorites',
-        verbose_name='Пользователь'
-    )
-    recipe = models.ForeignKey(
-        Recipe,
-        on_delete=models.CASCADE,
-        related_name='favorites',
-        verbose_name='Рецепт'
-    )
-
-    class Meta:
+    class Meta(UserRecipeRelation.Meta):
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранное'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'recipe'], name='unique_favorite'
-            )
-        ]
 
     def __str__(self):
-        return f'{self.user} {self.recipe}'
+        return f'{self.user} ♥ {self.recipe}'
+
+
+class ShoppingCart(UserRecipeRelation):
+    """Модель списка покупок."""
+
+    class Meta(UserRecipeRelation.Meta):
+        verbose_name = 'Список покупок'
+        verbose_name_plural = 'Списки покупок'
+
+    def __str__(self):
+        return f'{self.user} → {self.recipe}'

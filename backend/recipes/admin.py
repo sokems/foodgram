@@ -1,65 +1,56 @@
-from django.contrib.admin import ModelAdmin, register
+from django.contrib import admin
 
-from .models import (
-    Ingredient, IngredientInRecipe, Recipe,
-    Tag, ShoppingCart, Follow, Favorite, TagInRecipe
-)
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart, Tag)
 
 
-@register(Ingredient)
-class IngredientAdmin(ModelAdmin):
-    list_display = ('pk', 'name', 'measurement_unit')
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'slug')
     search_fields = ('name',)
+    list_filter = ('name',)
+    prepopulated_fields = {'slug': ('name',)}
 
 
-@register(Recipe)
-class RecipeAdmin(ModelAdmin):
+@admin.register(Ingredient)
+class IngredientAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'measurement_unit')
+    search_fields = ('name',)
+    list_filter = ('measurement_unit',)
+
+
+class RecipeIngredientInline(admin.TabularInline):
+    model = RecipeIngredient
+    extra = 1
+    min_num = 1
+
+
+@admin.register(Recipe)
+class RecipeAdmin(admin.ModelAdmin):
     list_display = (
-        'pk', 'name', 'author', 'get_favorites', 'get_tags', 'created'
+        'id',
+        'name',
+        'author',
+        'cooking_time',
+        'favorite_count',
     )
-    list_filter = ('author', 'name', 'tags')
-    search_fields = ('name',)
+    search_fields = ('name', 'author__username', 'tags__name')
+    list_filter = ('tags',)
+    inlines = [RecipeIngredientInline]
 
-    def get_favorites(self, obj):
-        return obj.favorites.count()
-
-    get_favorites.short_description = (
-        'Количество добавлений рецепта в избранное'
-    )
-
-    def get_tags(self, obj):
-        return '\n'.join(obj.tags.values_list('name', flat=True))
-
-    get_tags.short_description = 'Тег или список тегов'
+    @admin.display(description='Добавлений в избранное')
+    def favorite_count(self, obj):
+        """Возвращает количество добавлений рецепта в избранное."""
+        return obj.favorited_by.count()
 
 
-@register(Tag)
-class TagAdmin(ModelAdmin):
-    list_display = ('pk', 'name', 'color', 'slug')
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ('user', 'recipe')
+    search_fields = ('user__username', 'recipe__name')
 
 
-@register(IngredientInRecipe)
-class IngredientInRecipe(ModelAdmin):
-    list_display = ('pk', 'recipe', 'ingredient', 'amount')
-
-
-@register(ShoppingCart)
-class ShoppingCartAdmin(ModelAdmin):
-    list_display = ('pk', 'user', 'recipe')
-
-
-@register(Follow)
-class FollowAdmin(ModelAdmin):
-    list_display = ('pk', 'user', 'author')
-    search_fields = ('user', 'author')
-    list_filter = ('user', 'author')
-
-
-@register(Favorite)
-class FavoriteAdmin(ModelAdmin):
-    list_display = ('pk', 'user', 'recipe')
-
-
-@register(TagInRecipe)
-class TagInRecipeAdmin(ModelAdmin):
-    list_display = ('pk', 'tag', 'recipe')
+@admin.register(ShoppingCart)
+class ShoppingCartAdmin(admin.ModelAdmin):
+    list_display = ('user', 'recipe')
+    search_fields = ('user__username', 'recipe__name')

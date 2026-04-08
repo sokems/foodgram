@@ -3,6 +3,7 @@ from pathlib import Path
 
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
+from django.core.validators import RegexValidator
 
 
 load_dotenv()
@@ -25,11 +26,11 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
-    'api.apps.ApiConfig',
-    'recipes.apps.RecipesConfig',
-    'users.apps.UsersConfig',
-    'drf_yasg',
     'django_filters',
+    'users.apps.UsersConfig',
+    'recipes.apps.RecipesConfig',
+    'api.apps.ApiConfig',
+    'drf_yasg',
 ]
 
 MIDDLEWARE = [
@@ -84,20 +85,20 @@ DATABASES = {
 
 AUTH_USER_MODEL = 'users.User'
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# AUTH_PASSWORD_VALIDATORS = [
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+#     },
+#     {
+#         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+#     },
+# ]
 
 LANGUAGE_CODE = 'ru-RU'
 
@@ -115,36 +116,66 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+BASIC_PAGE_SIZE = 6
+MAX_LIMIT_PAGE_SIZE = 100
+
+EMAIL_MAX_LENGTH = 254
+USERNAME_MAX_LENGTH = 150
+NAME_MAX_LENGTH = 150
+
+TAG_NAME_MAX_LENGTH = 32
+
+INGREDIENT_NAME_MAX_LENGTH = 128
+INGREDIENT_MEASURE_MAX_LENGTH = 64
+COLOR_NAME_MAX_LENGTH = 7
+
+RECIPE_NAME_MAX_LENGTH = 256
+
+UUID_MAX_LENGTH = 22
+
+COOKING_TIME_MIN = 1
+COOKING_TIME_MAX = 1440
+
+INGREDIENT_MIN_AMOUNT = 1
+INGREDIENT_MAX_AMOUNT = 1000
+
+USERNAME_REGEX = RegexValidator(
+    regex=r'^[\w.@+-]+$',
+    message=(
+        'Имя пользователя может содержать только буквы, '
+        'цифры и символы @/./+/-/_'
+    )
+)
+
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
+    'PAGE_SIZE': BASIC_PAGE_SIZE,
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 6,
+    'PAGE_SIZE_QUERY_PARAM': 'limit',
+    'MAX_PAGE_SIZE': MAX_LIMIT_PAGE_SIZE,
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'HIDE_USERS': False,
-    'PASSWORD_CHANGED_EMAIL_CONFIRMATION': False,
-    'TOKEN_MODEL': 'rest_framework.authtoken.models.Token',
     'SERIALIZERS': {
-        'user': 'api.serializers.CustomUserSerializer',
-        'user_create': 'api.serializers.CustomCreateUserSerializer',
-        'current_user': 'api.serializers.CustomUserSerializer',
+        'user': 'api.serializers.users.UserProfileSerializer',
+        'current_user': 'api.serializers.users.UserProfileSerializer',
     },
     'PERMISSIONS': {
-        'user': ['djoser.permissions.CurrentUserOrAdminOrReadOnly'],
-        'user_list': ['rest_framework.permissions.AllowAny']
+        'user': ['rest_framework.permissions.IsAuthenticatedOrReadOnly'],
+        'user_list': ['rest_framework.permissions.AllowAny'],
     },
 }
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 CSV_FILES_DIR = os.path.join(BASE_DIR, 'data')
 
