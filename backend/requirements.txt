@@ -4,7 +4,7 @@ djoser==2.1.0
 django-filter==23.1
 webcolors==1.12
 psycopg2-binary
-Pillow==9.5.0
+Pillow
 PyYAML
 gunicorn==20.1.0
 python-dotenv==1.1.0
