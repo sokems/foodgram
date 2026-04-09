@@ -38,7 +38,7 @@ services:
       - 9000:80
     restart: always
     volumes:
-      - ./frontend/build:/usr/share/nginx/html/
+      - /home/ubuntu/frontend/build:/usr/share/nginx/html/
       - ./docs/redoc.html:/usr/share/nginx/html/api/docs/redoc.html
       - ./docs/openapi-schema.yml:/usr/share/nginx/html/api/docs/openapi-schema.yml
       - static:/var/html/static/
