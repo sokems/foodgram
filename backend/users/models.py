@@ -1,29 +1,30 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from django.conf import settings
+from foodgram.constants import (EMAIL_MAX_LENGTH, NAME_MAX_LENGTH,
+                                USERNAME_MAX_LENGTH, USERNAME_REGEX)
 
 
 class User(AbstractUser):
     """Модель пользователя."""
 
     email = models.EmailField(
-        max_length=settings.EMAIL_MAX_LENGTH,
+        max_length=EMAIL_MAX_LENGTH,
         unique=True,
         verbose_name='Адрес электронной почты',
     )
     username = models.CharField(
-        max_length=settings.USERNAME_MAX_LENGTH,
+        max_length=USERNAME_MAX_LENGTH,
         unique=True,
-        validators=[settings.USERNAME_REGEX],
+        validators=[USERNAME_REGEX],
         verbose_name='Имя пользователя',
     )
     first_name = models.CharField(
-        max_length=settings.NAME_MAX_LENGTH,
+        max_length=NAME_MAX_LENGTH,
         verbose_name='Имя',
     )
     last_name = models.CharField(
-        max_length=settings.NAME_MAX_LENGTH,
+        max_length=NAME_MAX_LENGTH,
         verbose_name='Фамилия',
     )
     avatar = models.ImageField(
@@ -70,7 +71,7 @@ class Subscription(models.Model):
                 name='unique_subscription',
             ),
             models.CheckConstraint(
-                condition=~models.Q(user=models.F('author')),
+                check=~models.Q(user=models.F('author')),
                 name='prevent_self_subscription',
             ),
         ]

@@ -4,7 +4,13 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Exists, Manager, OuterRef
 
-from django.conf import settings
+from foodgram.constants import (COOKING_TIME_MAX, COOKING_TIME_MIN,
+                                INGREDIENT_MAX_AMOUNT,
+                                INGREDIENT_MEASURE_MAX_LENGTH,
+                                INGREDIENT_MIN_AMOUNT,
+                                INGREDIENT_NAME_MAX_LENGTH,
+                                RECIPE_NAME_MAX_LENGTH, TAG_NAME_MAX_LENGTH,
+                                UUID_MAX_LENGTH)
 
 User = get_user_model()
 
@@ -37,12 +43,12 @@ class Tag(models.Model):
     """Модель тега."""
 
     name = models.CharField(
-        max_length=settings.TAG_NAME_MAX_LENGTH,
+        max_length=TAG_NAME_MAX_LENGTH,
         unique=True,
         verbose_name='Название тега',
     )
     slug = models.SlugField(
-        max_length=settings.TAG_NAME_MAX_LENGTH,
+        max_length=TAG_NAME_MAX_LENGTH,
         unique=True,
         verbose_name='Слаг',
     )
@@ -60,11 +66,11 @@ class Ingredient(models.Model):
     """Модель ингредиента."""
 
     name = models.CharField(
-        max_length=settings.INGREDIENT_NAME_MAX_LENGTH,
+        max_length=INGREDIENT_NAME_MAX_LENGTH,
         verbose_name='Название ингредиента',
     )
     measurement_unit = models.CharField(
-        max_length=settings.INGREDIENT_MEASURE_MAX_LENGTH,
+        max_length=INGREDIENT_MEASURE_MAX_LENGTH,
         verbose_name='Единица измерения',
     )
 
@@ -95,7 +101,7 @@ class Recipe(models.Model):
         verbose_name='Автор',
     )
     name = models.CharField(
-        max_length=settings.RECIPE_NAME_MAX_LENGTH,
+        max_length=RECIPE_NAME_MAX_LENGTH,
         verbose_name='Название рецепта',
     )
     text = models.TextField(verbose_name='Описание рецепта')
@@ -107,17 +113,17 @@ class Recipe(models.Model):
         verbose_name='Время приготовления (мин)',
         validators=[
             MinValueValidator(
-                settings.COOKING_TIME_MIN,
+                COOKING_TIME_MIN,
                 message=(
                     f'Время приготовления не может быть меньше '
-                    f'{settings.COOKING_TIME_MIN} минут.'
+                    f'{COOKING_TIME_MIN} минут.'
                 ),
             ),
             MaxValueValidator(
-                settings.COOKING_TIME_MAX,
+                COOKING_TIME_MAX,
                 message=(
                     f'Время приготовления не может быть больше '
-                    f'{settings.COOKING_TIME_MAX} минут.'
+                    f'{COOKING_TIME_MAX} минут.'
                 ),
             ),
         ],
@@ -134,7 +140,7 @@ class Recipe(models.Model):
         verbose_name='Ингредиенты',
     )
     short_code = models.CharField(
-        max_length=settings.UUID_MAX_LENGTH,
+        max_length=UUID_MAX_LENGTH,
         unique=True,
         default=shortuuid.uuid,
         verbose_name='Короткий код',
@@ -172,17 +178,17 @@ class RecipeIngredient(models.Model):
         verbose_name='Количество',
         validators=[
             MinValueValidator(
-                settings.INGREDIENT_MIN_AMOUNT,
+                INGREDIENT_MIN_AMOUNT,
                 message=(
                     f'Количество ингредиента не может быть меньше '
-                    f'{settings.INGREDIENT_MIN_AMOUNT}.'
+                    f'{INGREDIENT_MIN_AMOUNT}.'
                 ),
             ),
             MaxValueValidator(
-                settings.INGREDIENT_MAX_AMOUNT,
+                INGREDIENT_MAX_AMOUNT,
                 message=(
                     f'Количество ингредиента не может быть больше '
-                    f'{settings.INGREDIENT_MAX_AMOUNT}.'
+                    f'{INGREDIENT_MAX_AMOUNT}.'
                 ),
             ),
         ],
