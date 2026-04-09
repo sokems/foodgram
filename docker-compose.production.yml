@@ -7,6 +7,7 @@ volumes:
 services:
   db:
     image: postgres:14.0-alpine
+    restart: always
     volumes:
       - pg:/var/lib/postgresql/data/
     env_file:
@@ -35,6 +36,7 @@ services:
     image: sokems/foodgram_gateway
     ports:
       - 9000:80
+    restart: always
     volumes:
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/redoc.html:/usr/share/nginx/html/api/docs/redoc.html
