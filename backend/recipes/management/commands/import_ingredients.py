@@ -11,6 +11,7 @@ class Command(BaseCommand):
     help = 'Load ingredients from CSV file'
 
     def handle(self, *args, **kwargs):
+        counter = 0
         csv_path = os.path.join(
             settings.BASE_DIR, 'data', 'ingredients.csv'
         )
@@ -29,10 +30,11 @@ class Command(BaseCommand):
                     Ingredient.objects.get_or_create(
                         name=name, measurement_unit=measurement_unit
                     )
+                    counter += 1
                     self.stdout.write(
                         self.style.SUCCESS(f'Add «{name}»')
                     )
 
         self.stdout.write(
-            self.style.SUCCESS('Successfully loaded ingredients')
+            self.style.SUCCESS(f'Successfully loaded {counter} ingredients')
         )

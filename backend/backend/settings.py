@@ -7,11 +7,11 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-=*5yakep))1cy0r9r(av7*tsm=9wqs80*@n9g+f3h%f^3ju6r8')
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -101,13 +101,11 @@ USE_I18N = True
 
 USE_TZ = True
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
-
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = '/static/'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'staticfiles')]
+MEDIA_ROOT = '/media/'
+# STATICFILES_DIRS = [os.path.join(BASE_DIR, 'staticfiles')]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
@@ -136,6 +134,8 @@ MAX_PAGE_SIZE = 100
 
 TRUE_VALUE = 1
 FALSE_VALUE = 0
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
@@ -166,3 +166,11 @@ DJOSER = {
         'user_list': ['rest_framework.permissions.AllowAny'],
     },
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:9000",
+    "http://localhost:9000",
+    "http://127.0.0.1",
+    "http://localhost",
+    "https://watch-match.online"
+]

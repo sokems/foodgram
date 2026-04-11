@@ -11,6 +11,7 @@ class Command(BaseCommand):
     help = 'Load Tags from CSV file'
 
     def handle(self, *args, **kwargs):
+        counter = 0
         csv_path = os.path.join(
             settings.BASE_DIR, 'data', 'tags.csv'
         )
@@ -29,10 +30,11 @@ class Command(BaseCommand):
                     Tag.objects.get_or_create(
                         name=name, slug=slug
                     )
+                    counter += 1
                     self.stdout.write(
                         self.style.SUCCESS(f'Add «{name}»')
                     )
 
         self.stdout.write(
-            self.style.SUCCESS('Successfully loaded tags')
+            self.style.SUCCESS(f'Successfully loaded {counter} tags')
         )

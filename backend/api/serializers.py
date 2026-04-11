@@ -202,6 +202,31 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
         return recipe
 
+    def update(self, instance, validated_data):
+        ingredients = validated_data.pop('ingredients', None)
+        tags = validated_data.pop('tags', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if tags is not None:
+            instance.tags.set(tags)
+
+        if ingredients is not None:
+            instance.ingredient_in_recipe.all().delete()
+
+            IngredientInRecipe.objects.bulk_create([
+                IngredientInRecipe(
+                    recipe=instance,
+                    ingredient_id=item['id'],
+                    amount=item['amount']
+                )
+                for item in ingredients
+            ])
+
+        instance.save()
+        return instance
+
     def to_representation(self, instance):
         return RecipeSerializer(instance, context=self.context).data
 
