@@ -102,7 +102,11 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USER }}
           key: ${{ secrets.SSH_KEY }}
-          source: ./infra/docker-compose.yml
+          source: |
+            ./infra/docker-compose.yml
+            ./docs/*
+            ./frontend/*
+            ./infra/nginx.conf
           target: "foodgram"
       - name: Executing remote ssh commands to deploy
         uses: appleboy/ssh-action@master
