@@ -13,7 +13,7 @@ services:
 
   backend:
     container_name: foodgram-backend
-    image: sokems/foogram_backend
+    build: ../backend/
     env_file: .env
     volumes:
       - static:/static/
@@ -23,9 +23,9 @@ services:
 
   frontend:
     container_name: foodgram-front
-    image: sokems/foodgram_frontend
+    build: ../frontend
     volumes:
-      - ./frontend/:/app/result_build/
+      - ../frontend/:/app/result_build/
 
   nginx:
     container_name: foodgram-proxy
@@ -36,8 +36,8 @@ services:
       - static:/static
       - media:/media
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./frontend/build:/usr/share/nginx/html/
-      - ./docs/:/usr/share/nginx/html/api/docs/
+      - ../frontend/build:/usr/share/nginx/html/
+      - ../docs/:/usr/share/nginx/html/api/docs/
     depends_on:
       - frontend
       - backend
