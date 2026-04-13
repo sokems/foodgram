@@ -71,6 +71,9 @@ class CustomUserSerializer(UserSerializer):
     def get_avatar(self, obj):
         return obj.avatar.url if obj.avatar else None
 
+    def to_representation(self, instance):
+        return super().to_representation(instance)
+
 
 class AvatarSerializer(serializers.ModelSerializer):
     """Сериализатор для аватара."""
@@ -115,6 +118,11 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'measurement_unit', 'amount')
 
 
+class IngredientWriteSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    amount = serializers.IntegerField(min_value=1)
+
+
 class ShortRecipeSerializer(serializers.ModelSerializer):
     """Короткий сериализатор для рецептов."""
 
@@ -143,7 +151,10 @@ class RecipeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = '__all__'
+        exclude = (
+            'pub_date',
+            'short_code',
+        )
 
     def get_is_favorited(self, obj):
         request = self.context.get('request')
@@ -168,7 +179,7 @@ class RecipeSerializer(serializers.ModelSerializer):
 class RecipeCreateSerializer(serializers.ModelSerializer):
     """Сериализатор для создания/обновления рецептов."""
 
-    ingredients = serializers.ListField()
+    ingredients = IngredientWriteSerializer(many=True)
     tags = serializers.PrimaryKeyRelatedField(
         queryset=Tag.objects.all(), many=True
     )
@@ -177,12 +188,50 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = '__all__'
+        exclude = (
+            'pub_date',
+            'short_code',
+        )
 
     def validate_cooking_time(self, value):
         if value < 1:
             raise serializers.ValidationError('Минимум 1')
         return value
+
+    def validate(self, data):
+        ingredients = data.get('ingredients')
+        tags = data.get('tags', [])
+
+        if not ingredients:
+            raise serializers.ValidationError('Нужен хотя бы один ингредиент')
+
+        ingredient_ids = [item['id'] for item in ingredients]
+        existing_ids = set(
+            Ingredient.objects.filter(id__in=ingredient_ids)
+            .values_list('id', flat=True)
+        )
+
+        missing_ids = [i for i in ingredient_ids if i not in existing_ids]
+        if missing_ids:
+            raise serializers.ValidationError(
+                {'ingredients': f'Ингредиенты не найдены: {missing_ids}'}
+            )
+
+        if len(ingredient_ids) != len(set(ingredient_ids)):
+            raise serializers.ValidationError('Ингредиенты не должны повторяться')
+
+        if any(item['amount'] < 1 for item in ingredients):
+            raise serializers.ValidationError(
+                {'ingredients': 'Количество должно быть больше 0'}
+            )
+
+        if not tags:
+            raise serializers.ValidationError('Нужен хотя бы один тег')
+
+        if len(tags) != len(set(tags)):
+            raise serializers.ValidationError('Теги не должны повторяться')
+
+        return data
 
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import RegexValidator
 from django.db import models
 from django.conf import settings
 
@@ -17,7 +18,13 @@ class User(AbstractUser):
     username = models.CharField(
         'Username',
         max_length=settings.MAX_USERNAME_LENGTH,
-        unique=True
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r'^[\w.@+-]+\Z',
+                message='Допустимы только буквы, цифры и символы @ . + - _'
+            )
+        ]
     )
     first_name = models.CharField(
         'Имя',
@@ -73,6 +80,10 @@ class Subscription(models.Model):
             models.UniqueConstraint(
                 fields=('user', 'author'),
                 name='unique_subscription'
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(user=models.F('author')),
+                name='prevent_self_subscription'
             )
         ]
 

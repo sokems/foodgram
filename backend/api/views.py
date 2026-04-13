@@ -2,6 +2,7 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django_filters.rest_framework import DjangoFilterBackend
+from django.contrib.auth import update_session_auth_hash
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -47,12 +48,33 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action == 'create':
             return (AllowAny(),)
+        if self.action == 'me':
+            return (IsAuthenticated(),)
         return (IsAuthenticatedOrReadOnly(),)
 
     def get_serializer_class(self):
         if self.action == 'create':
             return CustomUserCreateSerializer
         return CustomUserSerializer
+
+    @action(
+        detail=False,
+        methods=('post',),
+        permission_classes=(IsAuthenticated,),
+    )
+    def set_password(self, request):
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if not user.check_password(current_password):
+            raise ValidationError('Неверный текущий пароль')
+
+        user.set_password(new_password)
+        user.save()
+        update_session_auth_hash(request, user)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False,
@@ -176,7 +198,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     filterset_class = RecipeFilter
 
     def get_serializer_class(self):
-        if self.action in ('create', 'partial_update'):
+        if self.action in ('create', 'update', 'partial_update'):
             return RecipeCreateSerializer
         return RecipeSerializer
 

@@ -102,9 +102,13 @@ class Recipe(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.short_code:
-            self.short_code = ''.join(
-                random.choices(string.ascii_letters + string.digits, k=6)
-            )
+            while True:
+                code = ''.join(
+                    random.choices(string.ascii_letters + string.digits, k=6)
+                )
+                if not Recipe.objects.filter(short_code=code).exists():
+                    self.short_code = code
+                    break
         super().save(*args, **kwargs)
 
     class Meta:
