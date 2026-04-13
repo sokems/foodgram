@@ -57,7 +57,7 @@ class User(AbstractUser):
 class Subscription(models.Model):
     """
     Модель подписки пользователей.
-    Пользователь (user) подписывается на автора (author).
+    Пользователь (user) подписывается на автора (author)
     """
 
     user = models.ForeignKey(
