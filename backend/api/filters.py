@@ -1,5 +1,4 @@
 from django_filters import rest_framework as filters
-from django.conf import settings
 
 from recipes.models import Ingredient, Recipe, Tag
 
@@ -54,14 +53,14 @@ class RecipeFilter(filters.FilterSet):
         """
         user = self.request.user
 
-        if value == settings.TRUE_VALUE:
+        if value:
             if not user.is_authenticated:
                 return queryset.none()
             return queryset.filter(
                 favorites__user=user
             ).distinct()
 
-        if value == settings.FALSE_VALUE and user.is_authenticated:
+        if not value and user.is_authenticated:
             return queryset.exclude(
                 favorites__user=user
             ).distinct()
@@ -77,14 +76,14 @@ class RecipeFilter(filters.FilterSet):
         """
         user = self.request.user
 
-        if value == settings.TRUE_VALUE:
+        if value:
             if not user.is_authenticated:
                 return queryset.none()
             return queryset.filter(
                 shopping_cart__user=user
             ).distinct()
 
-        if value == settings.FALSE_VALUE and user.is_authenticated:
+        if not value and user.is_authenticated:
             return queryset.exclude(
                 shopping_cart__user=user
             ).distinct()

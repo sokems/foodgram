@@ -1,8 +1,8 @@
 from django.db.models import Sum
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from django.contrib.auth import update_session_auth_hash
+from djoser.views import UserViewSet as DjoserUserViewSet
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -23,126 +23,89 @@ from recipes.models import (
 )
 from users.models import Subscription, User
 from .filters import IngredientFilter, RecipeFilter
-from .pagination import CustomPagination
+from .pagination import ApiPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     AvatarSerializer,
-    CustomUserCreateSerializer,
-    CustomUserSerializer,
+    ApiUserSerializer,
     IngredientSerializer,
     RecipeCreateSerializer,
     RecipeSerializer,
-    ShortRecipeSerializer,
     SubscriptionSerializer,
+    SubscriptionCreateSerializer,
     TagSerializer,
+    FavoriteSerializer,
+    ShoppingCartSerializer
 )
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(DjoserUserViewSet):
     """Вьюсет пользователей."""
 
     queryset = User.objects.all()
-    serializer_class = CustomUserSerializer
-    pagination_class = CustomPagination
-
-    def get_permissions(self):
-        if self.action == 'create':
-            return (AllowAny(),)
-        if self.action == 'me':
-            return (IsAuthenticated(),)
-        return (IsAuthenticatedOrReadOnly(),)
-
-    def get_serializer_class(self):
-        if self.action == 'create':
-            return CustomUserCreateSerializer
-        return CustomUserSerializer
-
-    @action(
-        detail=False,
-        methods=('post',),
-        permission_classes=(IsAuthenticated,),
-    )
-    def set_password(self, request):
-        user = request.user
-        current_password = request.data.get('current_password')
-        new_password = request.data.get('new_password')
-
-        if not user.check_password(current_password):
-            raise ValidationError('Неверный текущий пароль')
-
-        user.set_password(new_password)
-        user.save()
-        update_session_auth_hash(request, user)
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    serializer_class = ApiUserSerializer
+    pagination_class = ApiPagination
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     @action(
         detail=False,
         methods=('get',),
         permission_classes=(IsAuthenticated,)
     )
-    def me(self, request):
-        """Текущий пользователь."""
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
+    def me(self, request, *args, **kwargs):
+        return super().me(request, *args, **kwargs)
 
     @action(
         detail=False,
-        methods=('put', 'delete'),
+        methods=('put',),
         permission_classes=(IsAuthenticated,),
         url_path='me/avatar',
     )
     def avatar(self, request):
-        """Добавление/удаление аватара."""
-        if request.method == 'PUT':
-            serializer = AvatarSerializer(
-                request.user,
-                data=request.data,
-                context={'request': request}
-            )
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
-            return Response(serializer.data)
+        serializer = AvatarSerializer(
+            request.user,
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
-        if request.method == 'DELETE':
-            if request.user.avatar:
-                request.user.avatar.delete()
-                request.user.avatar = None
-                request.user.save()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+    @avatar.mapping.delete
+    def delete_avatar(self, request):
+        request.user.avatar.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=True,
-        methods=('post', 'delete'),
+        methods=('post',),
         permission_classes=(IsAuthenticated,)
     )
-    def subscribe(self, request, pk=None):
-        """Подписка/отписка."""
-        author = get_object_or_404(User, pk=pk)
+    def subscribe(self, request, id=None):
+        author = get_object_or_404(User, pk=id)
 
-        if request.user == author:
-            raise ValidationError('Нельзя подписаться на себя')
+        serializer = SubscriptionCreateSerializer(
+            data={'author': author.id},
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        if request.method == 'POST':
-            if Subscription.objects.filter(
-                user=request.user, author=author
-            ).exists():
-                raise ValidationError('Вы уже подписаны')
-
-            Subscription.objects.create(
-                user=request.user, author=author
-            )
-
-            serializer = SubscriptionSerializer(
+        return Response(
+            SubscriptionSerializer(
                 author,
                 context={'request': request}
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            ).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @subscribe.mapping.delete
+    def unsubscribe(self, request, id=None):
+        author = get_object_or_404(User, pk=id)
 
         deleted, _ = Subscription.objects.filter(
-            user=request.user, author=author
+            user=request.user,
+            author=author
         ).delete()
 
         if not deleted:
@@ -192,13 +155,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
     """Рецепты."""
 
     queryset = Recipe.objects.all()
-    pagination_class = CustomPagination
+    pagination_class = ApiPagination
     permission_classes = (IsAuthorOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     filterset_class = RecipeFilter
 
     def get_serializer_class(self):
-        if self.action in ('create', 'update', 'partial_update'):
+        if self.action in ('create', 'partial_update'):
             return RecipeCreateSerializer
         return RecipeSerializer
 
@@ -207,27 +170,29 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True,
-        methods=('post', 'delete'),
+        methods=('post',),
         permission_classes=(IsAuthenticated,)
     )
     def favorite(self, request, pk=None):
-        """Добавить/удалить рецепт из избранного."""
         recipe = self.get_object()
-        user = request.user
 
-        if request.method == 'POST':
-            if Favorite.objects.filter(user=user, recipe=recipe).exists():
-                raise ValidationError('Рецепт уже в избранном')
+        serializer = FavoriteSerializer(
+            data={'recipe': recipe.id},
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-            Favorite.objects.create(user=user, recipe=recipe)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-            serializer = ShortRecipeSerializer(
-                recipe, context={'request': request}
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+    @favorite.mapping.delete
+    def delete_favorite(self, request, pk=None):
+        """Удалить рецепт из избранного."""
+        recipe = self.get_object()
 
         deleted, _ = Favorite.objects.filter(
-            user=user, recipe=recipe
+            user=request.user,
+            recipe=recipe
         ).delete()
 
         if not deleted:
@@ -237,29 +202,28 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True,
-        methods=('post', 'delete'),
+        methods=('post',),
         permission_classes=(IsAuthenticated,)
     )
     def shopping_cart(self, request, pk=None):
-        """Добавить/удалить рецепт из списка покупок."""
         recipe = self.get_object()
-        user = request.user
 
-        if request.method == 'POST':
-            if ShoppingCart.objects.filter(
-                user=user, recipe=recipe
-            ).exists():
-                raise ValidationError('Рецепт уже в списке покупок')
+        serializer = ShoppingCartSerializer(
+            data={'recipe': recipe.id},
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-            ShoppingCart.objects.create(user=user, recipe=recipe)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-            serializer = ShortRecipeSerializer(
-                recipe, context={'request': request}
-            )
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+    @shopping_cart.mapping.delete
+    def delete_shopping_cart(self, request, pk=None):
+        recipe = self.get_object()
 
         deleted, _ = ShoppingCart.objects.filter(
-            user=user, recipe=recipe
+            user=request.user,
+            recipe=recipe
         ).delete()
 
         if not deleted:
@@ -304,8 +268,3 @@ class RecipeViewSet(viewsets.ModelViewSet):
             'attachment; filename="shopping_list.txt"'
         )
         return response
-
-
-def index(request):
-    """Заглушка для главной страницы."""
-    return render(request, 'index.html')

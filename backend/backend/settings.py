@@ -2,12 +2,13 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from django.core.management.utils import get_random_secret_key
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-=*5yakep))1cy0r9r(av7*tsm=9wqs80*@n9g+f3h%f^3ju6r8')
+SECRET_KEY = os.getenv('SECRET_KEY', get_random_secret_key())
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
@@ -111,41 +112,38 @@ AUTH_USER_MODEL = 'users.User'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-MAX_EMAIL_LENGTH = 254
 MAX_USERNAME_LENGTH = 150
 MAX_NAME_LENGTH = 150
 MIN_INGREDIENT_AMOUNT = 1
+MAX_INGREDIENT_AMOUNT = 32_000
 MAX_SLUG_LENGTH = 200
 
-MAX_TAG_NAME_LENGTH = 200
-MAX_TAG_SLUG_LENGTH = 200
+MAX_TAG_NAME_LENGTH = 32
+MAX_TAG_SLUG_LENGTH = 32
 MAX_COLOR_LENGTH = 7
 
-MAX_INGREDIENT_NAME_LENGTH = 200
-MAX_MEASUREMENT_UNIT_LENGTH = 50
+MAX_INGREDIENT_NAME_LENGTH = 128
+MAX_MEASUREMENT_UNIT_LENGTH = 64
 
-MAX_RECIPE_NAME_LENGTH = 200
+MAX_RECIPE_NAME_LENGTH = 256
 MIN_COOKING_TIME = 1
+MAX_COOKING_TIME = 32_000
 MIN_AMOUNT = 1
 
-PAGE_SIZE = 6
-MAX_PAGE_SIZE = 100
+MAX_SHORT_CODE_NAME_LENGTH = 10
 
-TRUE_VALUE = 1
-FALSE_VALUE = 0
+PAGE_SIZE = 6
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
-
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
     ],
-    'DEFAULT_PAGINATION_CLASS': 'api.pagination.CustomPagination',
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.ApiPagination',
     'PAGE_SIZE': PAGE_SIZE,
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -156,9 +154,8 @@ DJOSER = {
     'LOGIN_FIELD': 'email',
     'HIDE_USERS': False,
     'SERIALIZERS': {
-        'user_create': 'api.serializers.CustomUserCreateSerializer',
-        'user': 'api.serializers.CustomUserSerializer',
-        'current_user': 'api.serializers.CustomUserSerializer',
+        'user': 'api.serializers.ApiUserSerializer',
+        'current_user': 'api.serializers.ApiUserSerializer',
     },
     'PERMISSIONS': {
         'user': ['rest_framework.permissions.IsAuthenticated'],
@@ -169,7 +166,12 @@ DJOSER = {
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:9000",
     "http://localhost:9000",
-    "http://127.0.0.1",
-    "http://localhost",
-    "https://watch-match.online"
+]
+
+CSRF_TRUSTED_ORIGINS += [
+    f"http://{host}" for host in ALLOWED_HOSTS
+]
+
+CSRF_TRUSTED_ORIGINS += [
+    f"https://{host}" for host in ALLOWED_HOSTS
 ]

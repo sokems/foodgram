@@ -1,7 +1,7 @@
 import random
 import string
 
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 from django.conf import settings
@@ -13,12 +13,12 @@ class Tag(models.Model):
 
     name = models.CharField(
         'Название',
-        max_length=settings.MAX_NAME_LENGTH,
+        max_length=settings.MAX_TAG_NAME_LENGTH,
         unique=True
     )
     slug = models.SlugField(
         'Уникальный слаг',
-        max_length=settings.MAX_SLUG_LENGTH,
+        max_length=settings.MAX_TAG_SLUG_LENGTH,
         unique=True
     )
 
@@ -36,7 +36,7 @@ class Ingredient(models.Model):
 
     name = models.CharField(
         'Название',
-        max_length=settings.MAX_NAME_LENGTH
+        max_length=settings.MAX_INGREDIENT_NAME_LENGTH
     )
     measurement_unit = models.CharField(
         'Единица измерения',
@@ -69,7 +69,7 @@ class Recipe(models.Model):
     )
     name = models.CharField(
         'Название',
-        max_length=settings.MAX_NAME_LENGTH
+        max_length=settings.MAX_RECIPE_NAME_LENGTH
     )
     image = models.ImageField(
         'Картинка',
@@ -87,7 +87,10 @@ class Recipe(models.Model):
     )
     cooking_time = models.PositiveSmallIntegerField(
         'Время приготовления (мин)',
-        validators=(MinValueValidator(settings.MIN_COOKING_TIME),)
+        validators=(
+            MinValueValidator(settings.MIN_COOKING_TIME),
+            MaxValueValidator(settings.MAX_COOKING_TIME)
+        )
     )
     pub_date = models.DateTimeField(
         'Дата публикации',
@@ -95,10 +98,18 @@ class Recipe(models.Model):
     )
 
     short_code = models.CharField(
-        max_length=10,
+        max_length=settings.MAX_SHORT_CODE_NAME_LENGTH,
         unique=True,
         blank=True
     )
+
+    class Meta:
+        verbose_name = 'Рецепт'
+        verbose_name_plural = 'Рецепты'
+        ordering = ('-pub_date',)
+
+    def __str__(self):
+        return f'{self.name} ({self.author})'
 
     def save(self, *args, **kwargs):
         if not self.short_code:
@@ -110,14 +121,6 @@ class Recipe(models.Model):
                     self.short_code = code
                     break
         super().save(*args, **kwargs)
-
-    class Meta:
-        verbose_name = 'Рецепт'
-        verbose_name_plural = 'Рецепты'
-        ordering = ('-pub_date',)
-
-    def __str__(self):
-        return f'{self.name} ({self.author})'
 
 
 class IngredientInRecipe(models.Model):
@@ -135,7 +138,10 @@ class IngredientInRecipe(models.Model):
     )
     amount = models.PositiveSmallIntegerField(
         'Количество',
-        validators=(MinValueValidator(settings.MIN_INGREDIENT_AMOUNT),)
+        validators=(
+            MinValueValidator(settings.MIN_INGREDIENT_AMOUNT),
+            MaxValueValidator(settings.MAX_INGREDIENT_AMOUNT)
+        )
     )
 
     class Meta:
