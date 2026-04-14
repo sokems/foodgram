@@ -1,7 +1,6 @@
 import base64
 
 from django.core.files.base import ContentFile
-from djoser.serializers import UserSerializer
 from rest_framework import serializers
 
 from recipes.models import (
@@ -26,13 +25,13 @@ class Base64ImageField(serializers.ImageField):
         return super().to_internal_value(data)
 
 
-class ApiUserSerializer(UserSerializer):
+class ApiUserSerializer(serializers.ModelSerializer):
     """Сериализатор пользователя."""
 
     is_subscribed = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
 
-    class Meta(UserSerializer.Meta):
+    class Meta:
         model = User
         fields = (
             'email',
@@ -291,16 +290,12 @@ class SubscriptionSerializer(ApiUserSerializer):
 class SubscriptionCreateSerializer(serializers.ModelSerializer):
     """Сериализатор для создания подписки."""
 
-    user = serializers.HiddenField(
-        default=serializers.CurrentUserDefault()
-    )
-
     class Meta:
         model = Subscription
         fields = ('user', 'author')
 
     def validate(self, data):
-        user = data['user']
+        user = self.context['request'].user
         author = data['author']
 
         if user == author:
@@ -318,8 +313,11 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
 
         return data
 
-    def create(self, validated_data):
-        return Subscription.objects.create(**validated_data)
+    def to_representation(self, instance):
+        return SubscriptionSerializer(
+            instance.author,
+            context=self.context
+        ).data
 
 
 class UserRecipeSerializer(serializers.ModelSerializer):
@@ -331,7 +329,6 @@ class UserRecipeSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = ('user', 'recipe')
-        abstract = True
 
     def validate(self, data):
         user = data['user']
@@ -344,9 +341,6 @@ class UserRecipeSerializer(serializers.ModelSerializer):
             )
 
         return data
-
-    def create(self, validated_data):
-        return self.Meta.model.objects.create(**validated_data)
 
     def to_representation(self, instance):
         return ShortRecipeSerializer(

@@ -48,44 +48,40 @@ class RecipeFilter(filters.FilterSet):
         """
         Фильтрация по избранному.
 
-        TRUE_VALUE (1) → только избранные
-        FALSE_VALUE (0) → исключить избранные
+        value = 1 → только избранные
+        value = 0 → исключить избранные
         """
         user = self.request.user
 
+        if not user.is_authenticated:
+            return queryset.none() if value else queryset
+
         if value:
-            if not user.is_authenticated:
-                return queryset.none()
             return queryset.filter(
                 favorites__user=user
             ).distinct()
 
-        if not value and user.is_authenticated:
-            return queryset.exclude(
-                favorites__user=user
-            ).distinct()
-
-        return queryset
+        return queryset.exclude(
+            favorites__user=user
+        ).distinct()
 
     def filter_is_in_shopping_cart(self, queryset, name, value):
         """
         Фильтрация по списку покупок.
 
-        TRUE_VALUE (1) → только в списке покупок
-        FALSE_VALUE (0) → исключить
+        value = 1 → только в списке покупок
+        value = 0 → исключить
         """
         user = self.request.user
 
+        if not user.is_authenticated:
+            return queryset.none() if value else queryset
+
         if value:
-            if not user.is_authenticated:
-                return queryset.none()
             return queryset.filter(
                 shopping_cart__user=user
             ).distinct()
 
-        if not value and user.is_authenticated:
-            return queryset.exclude(
-                shopping_cart__user=user
-            ).distinct()
-
-        return queryset
+        return queryset.exclude(
+            shopping_cart__user=user
+        ).distinct()

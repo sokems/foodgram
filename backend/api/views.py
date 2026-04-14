@@ -85,19 +85,16 @@ class UserViewSet(DjoserUserViewSet):
         author = get_object_or_404(User, pk=id)
 
         serializer = SubscriptionCreateSerializer(
-            data={'author': author.id},
+            data={
+                'author': author.id,
+                'user': request.user.id
+            },
             context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        return Response(
-            SubscriptionSerializer(
-                author,
-                context={'request': request}
-            ).data,
-            status=status.HTTP_201_CREATED
-        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @subscribe.mapping.delete
     def unsubscribe(self, request, id=None):
@@ -177,7 +174,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = self.get_object()
 
         serializer = FavoriteSerializer(
-            data={'recipe': recipe.id},
+            data={
+                'recipe': recipe.id,
+                'user': request.user.id
+            },
+            # в данном случае DRF не передает context автоматически
             context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
@@ -209,7 +210,11 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = self.get_object()
 
         serializer = ShoppingCartSerializer(
-            data={'recipe': recipe.id},
+            data={
+                'recipe': recipe.id,
+                'user': request.user.id
+            },
+            # в данном случае DRF не передает context автоматически
             context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
