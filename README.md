@@ -2,7 +2,7 @@
 
 [![Django](https://img.shields.io/badge/Django-6.0-darkred)](https://www.djangoproject.com/)
 [![React](https://img.shields.io/badge/React-17-blue)](https://reactjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13.10-blue)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-blue)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-20.10-blue)](https://www.docker.com/)
 
 **Foodgram** — это веб-приложение с REST API, предназначенное для публикации, хранения и поиска рецептов. Сервис позволяет пользователям делиться своими блюдами, подписываться на авторов, добавлять рецепты в избранное и формировать список покупок на основе выбранных рецептов.
