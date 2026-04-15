@@ -323,10 +323,6 @@ class SubscriptionCreateSerializer(serializers.ModelSerializer):
 class UserRecipeSerializer(serializers.ModelSerializer):
     """Базовый сериализатор для избранного и корзины."""
 
-    user = serializers.HiddenField(
-        default=serializers.CurrentUserDefault()
-    )
-
     class Meta:
         fields = ('user', 'recipe')
 
@@ -345,7 +341,6 @@ class UserRecipeSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         return ShortRecipeSerializer(
             instance.recipe,
-            context=self.context
         ).data
 
 

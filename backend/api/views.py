@@ -178,8 +178,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 'recipe': recipe.id,
                 'user': request.user.id
             },
-            # в данном случае DRF не передает context автоматически
-            context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -214,8 +212,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 'recipe': recipe.id,
                 'user': request.user.id
             },
-            # в данном случае DRF не передает context автоматически
-            context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
